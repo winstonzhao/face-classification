@@ -1,24 +1,49 @@
-from flask import Flask
+from flask import Flask, request
 import pickle
 from pred import predict_one_image
 import sys
+import numpy as np
+import json
 
 app = Flask(__name__)
 
 MODEL_PATH='face_model.pkl'
+clf = None
+labels = None
 
 def load_model():
     with open(MODEL_PATH, 'rb') as f:
+        global clf
+        global labels
         clf, labels = pickle.load(f, encoding='latin1')
-    pred, locs = predict_one_image("https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fstatic.onecms.io%2Fwp-content%2Fuploads%2Fsites%2F20%2F2020%2F01%2Fkobe-bryant-family-1.jpg", clf, labels, True)
-    print(pred, file=sys.stdout)
-    print(locs, file=sys.stdout)
     return
 
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    url = request.args.get("url")
+    if not url:
+        return json.dumps([])
 
+    try:
+        race_map = {0: 'Asian', 1: 'White', 2: 'Black'}
+        pred, locs = predict_one_image(url, clf, labels, True)
+        print(pred.shape[0], file=sys.stdout)
+        output = []
+        for row in pred.iterrows():
+            if row[1]['Male'] >= 0.5:
+                gender = 'Male'
+            else:
+                gender = 'Female'
+
+            race = race_map[np.argmax(row[1][1:4])]
+            text_showed = "{} {}".format(race, gender)
+            output.append(text_showed)
+
+
+        return json.dumps(output)
+    except Exception as e:
+        print(e, file=sys.stderr)
+        return json.dumps([])
 if __name__ == '__main__':
     load_model()
     app.run(host='0.0.0.0')
