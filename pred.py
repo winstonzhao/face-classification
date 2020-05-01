@@ -19,7 +19,9 @@ N_UPSCLAE = 1
 def extract_features(img_path, url=False):
     """Exctract 128 dimensional features
     """
-    X_img = io.imread(img_path) if url else face_recognition.load_image_file(img_path)
+    resp = urllib.request.urlopen(img_path)
+    X_img = np.asarray(bytearray(resp.read()), dtype="uint8")
+    X_img = cv2.imdecode(X_img, cv2.IMREAD_COLOR)
     locs = face_locations(X_img, number_of_times_to_upsample = N_UPSCLAE)
     if len(locs) == 0:
         return None, None
@@ -60,7 +62,11 @@ def draw_attributes(img_path, df):
         cv2.putText(img, text_showed, (left + 6, bottom - 6), font, 0.5, (255, 255, 255), 1)
     return img
 
-
+def write_photo_with_attributes(image_url, pred, locs, path):
+    locs = pd.DataFrame(locs, columns = ['top', 'right', 'bottom', 'left'])
+    df = pd.concat([pred, locs], axis=1)
+    img = draw_attributes(image_url, df)
+    cv2.imwrite(path, img)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -88,7 +94,7 @@ def main():
     if not locs:
         print("No people found!")
         return
-    locs = pd.DataFrame(locs, columns = ['top', 'right', 'bottom', 'left'])
+    locs = pd.dataframe(locs, columns = ['top', 'right', 'bottom', 'left'])
     df = pd.concat([pred, locs], axis=1)
     img = draw_attributes(image_url, df)
     cv2.imwrite(os.path.join(output_dir, "image.jpg"), img)

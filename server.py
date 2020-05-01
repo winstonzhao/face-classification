@@ -1,6 +1,7 @@
+import uuid
 from flask import Flask, request
 import pickle
-from pred import predict_one_image
+from pred import predict_one_image, write_photo_with_attributes
 import sys
 import numpy as np
 import json
@@ -37,6 +38,8 @@ def hello_world():
 
             race = race_map[np.argmax(row[1][1:4])]
             text_showed = "{} {}".format(race, gender)
+            if race == 'Asian':
+                write_photo_with_attributes(url, pred, locs, "results/{}.jpg".format(str(uuid.uuid1())))
             output.append(text_showed)
 
 
